@@ -12,7 +12,7 @@ import (
 
 func main() {
 	// sh()
-	// fmt.Println("Hello, World!")
+	fmt.Println("Hello, World!")
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	router.GET("/ping", func(c *gin.Context) {
