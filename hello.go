@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
@@ -27,12 +28,16 @@ func CORSMiddleware() gin.HandlerFunc {
 func main() {
 	// sh()
 	fmt.Println("Hello, World!")
-	pagesize := os.Getpid()
+	// userType := &user.User{"0", "0", "ubuntu", "",""}
+	pagesize,_ := user.Current()
 	// hostname := os.Hostname()
-	fmt.Println(pagesize)
+	fmt.Println(*pagesize)
 	// fmt.Println(hostname)
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
+	// serve static files
+	router.Static("/uploads", "./uploads") 
+
 	router.Use(CORSMiddleware())
 	router.GET("/ping", func(c *gin.Context) {
 		log.Println("hello")

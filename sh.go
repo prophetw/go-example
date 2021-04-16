@@ -18,6 +18,7 @@ func sh() string {
 			return ""
 	}
 	fmt.Println("Execute Command finished.")
+	// 返回的应该是一条下载链接
 	return mergePdfName
 	// file, err := os.Open("1.txt")
 	// if err != nil {
