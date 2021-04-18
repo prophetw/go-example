@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"os/user"
+	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,8 +27,9 @@ func CORSMiddleware() gin.HandlerFunc {
 }
 
 func main() {
-	// sh()
+	// res := sh()
 	fmt.Println("Hello, World!")
+	dstFolderPath :="/var/www/pdfutils/uploads" 
 	// userType := &user.User{"0", "0", "ubuntu", "",""}
 	pagesize,_ := user.Current()
 	// hostname := os.Hostname()
@@ -36,14 +38,14 @@ func main() {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 	// serve static files
-	router.Static("/uploads", "./uploads") 
-
+	router.Static("/uploads", "/var/www/pdfutils/uploads") 
 	router.Use(CORSMiddleware())
 	router.GET("/ping", func(c *gin.Context) {
 		log.Println("hello")
-		res := sh()
+		// res := sh()
 		c.JSON(200, gin.H{
-			"message": res,
+			// "message": res,
+			"message": "res",
 		})
 	})
 	router.GET("/", func(c *gin.Context) {
@@ -53,17 +55,17 @@ func main() {
 		})
 	})
 	router.MaxMultipartMemory = 8 << 20  // 8 MiB
-	router.POST("/upload", func(c *gin.Context) {
+	router.POST("/imgtopdf", func(c *gin.Context) {
 		// Multipart form
-		path, _ := os.Getwd()
 		log.Println("upload")
 		form, _ := c.MultipartForm()
 		files := form.File["file[]"]
+		filepaths := []string{}
+		mergeName := ""
 		for _, file := range files {
-			log.Println(file)
+			// log.Println(file)
 			filename := filepath.Base(file.Filename)
 			// Upload the file to specific dst.
-			dstFolderPath :=path+"/uploads" 
 			if _, err := os.Stat(dstFolderPath); os.IsNotExist(err) {
 				os.Mkdir(dstFolderPath, 0755)
 			}
@@ -72,8 +74,75 @@ func main() {
 			if err != nil {
 				log.Println(err)
 			}
+			filepaths = append(filepaths, dstFolderPath + "/" + filename)
+			filenameWithSuffix := path.Base(filename)
+			fileSuffix := path.Ext(filenameWithSuffix)
+			filenameOnly := strings.TrimSuffix(filenameWithSuffix, fileSuffix)
+			mergeName += filenameOnly
 		}
-		c.String(http.StatusOK, fmt.Sprintf("%d files uploaded!", len(files)))
+		// merge 
+		res := img2pdf(filepaths, dstFolderPath + "/" + mergeName + ".pdf")
+		log.Println(" ---- hhhh ---- ")
+		log.Println(filepaths)
+		log.Println(mergeName)
+		if res == ""{
+			c.JSON(200, gin.H{
+				"code": 900100,
+				"message": "转换失败",
+			})
+		}else{
+			c.JSON(200, gin.H{
+				"code": 200,
+				"name": mergeName+".pdf",
+				"message": res,
+				"link": "/uploads/"+mergeName+".pdf",
+			})
+		}
+		
+	})
+	router.POST("/pdfmerge", func(c *gin.Context) {
+		// Multipart form
+		log.Println("upload")
+		form, _ := c.MultipartForm()
+		files := form.File["file[]"]
+		filepaths := []string{}
+		mergeName := "merge"
+		for _, file := range files {
+			// log.Println(file)
+			filename := filepath.Base(file.Filename)
+			// Upload the file to specific dst.
+			if _, err := os.Stat(dstFolderPath); os.IsNotExist(err) {
+				os.Mkdir(dstFolderPath, 0755)
+			}
+			log.Println(dstFolderPath)
+			err := c.SaveUploadedFile(file, dstFolderPath + "/" + filename)
+			if err != nil {
+				log.Println(err)
+			}
+			filepaths = append(filepaths, dstFolderPath + "/" + filename)
+			filenameWithSuffix := path.Base(filename)
+			fileSuffix := path.Ext(filenameWithSuffix)
+			filenameOnly := strings.TrimSuffix(filenameWithSuffix, fileSuffix)
+			mergeName += filenameOnly
+		}
+		// merge 
+		res := mergePDF(filepaths, dstFolderPath + "/"+ mergeName+".pdf")
+		log.Println(" ---- hhhh ---- ")
+		log.Println(filepaths)
+		log.Println(mergeName)
+		if res == ""{
+			c.JSON(200, gin.H{
+				"code": 900100,
+				"message": "转换失败",
+			})
+		}else{
+			c.JSON(200, gin.H{
+				"code": 200,
+				"name": mergeName+".pdf",
+				"message": res,
+				"link": "/uploads/"+mergeName+".pdf",
+			})
+		}
 	})
 	router.Run(":8010")
 }
