@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/user"
@@ -99,6 +100,40 @@ func main() {
 		}
 
 	})
+	router.POST("/img2txt", func(c *gin.Context) {
+		// Multipart form
+		log.Println("upload")
+		form, _ := c.MultipartForm()
+		file := form.File["file"]
+		filename := filepath.Base(file[0].Filename)
+		tmpfile, err := ioutil.TempFile("", "*"+filename)
+		if err != nil {
+			log.Fatal("Failed to write to temporary file", err)
+		}
+		errsave := c.SaveUploadedFile(file[0], tmpfile.Name())
+		if errsave != nil {
+			log.Println(err)
+		}
+	
+		log.Println(file)
+		fmt.Println("Created File: " + tmpfile.Name())
+		resstring := imgToTxt(tmpfile.Name())
+		defer os.Remove(tmpfile.Name())
+		// log.Println(" ---- hhhh ---- ")
+		// log.Println(filepaths)
+		// log.Println(mergeName)
+		if resstring == "" {
+			c.JSON(200, gin.H{
+				"code":    900100,
+				"message": "转换失败",
+			})
+		} else {
+			c.JSON(200, gin.H{
+				"code":    200,
+				"message": resstring,
+			})
+		}
+	})
 	router.POST("/pdfmerge", func(c *gin.Context) {
 		// Multipart form
 		log.Println("upload")
@@ -142,5 +177,5 @@ func main() {
 			})
 		}
 	})
-	router.Run(":8010")
+	router.Run(":8080")
 }
